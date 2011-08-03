@@ -9,6 +9,10 @@
 <value>Trocaire/manage.py</value>
 </pydev_variables_property>
 <pydev_pathproperty name="org.python.pydev.PROJECT_SOURCE_PATH">
-<path>/trocaire</path>
+<path>/Trocaire</path>
+<path>/Trocaire/monitoreopf</path>
+<path>/Trocaire/encuesta</path>
+<path>/Trocaire/mujeres_hombres</path>
+<path>/Trocaire/templates</path>
 </pydev_pathproperty>
 </pydev_project>

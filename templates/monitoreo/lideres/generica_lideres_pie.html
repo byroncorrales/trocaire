@@ -71,11 +71,13 @@
 {% endblock %}
 
 {% block contenido %}
+{% include "cambiar_instrumento.html" %}
 <div class="title_bar">
     <div class="titulo">L&iacute;deres | {{titulo}}</div>
     <div class="titulo der"><a href="/monitoreo/lideres/">&larr; Volver</a></div>
 </div>
-<div class="contraparts"><br>
+<div class="contraparts">	
+	{% include "filtros_seleccionados.html" %}	
     <div id= "grafosmujer" class="barra">
         <a href="#" id="m10_13" class="grafos">Gr&aacute;fico Mujeres</a>
     </div>
@@ -85,6 +87,7 @@
     <div class="clean"></div>
     <div id="container"></div>
 </div>
+<br>
 <div>
     <table class="tabla-resultados">
         <caption>TOTALES</caption>

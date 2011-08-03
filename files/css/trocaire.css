@@ -63,6 +63,15 @@ a{
 .salir_sprite:hover{
     background-position: 0 -28px;
 }
+.generales_sprite{
+    background: url(/files/img/generales_sprite.png) no-repeat;
+    display: inline-block;
+    width: 126px;
+    height: 28px;
+}
+.generales_sprite:hover{
+	background-position: 0 -28px;
+}
 .mh_sprite{
     background: url(/files/img/mh_sprite.png) no-repeat;
     display: inline-block;
@@ -101,7 +110,7 @@ a{
 }
 .banner{
     background: url(/files/img/banner.png) repeat-x;
-    height: 286px;
+    height: 296px;
 }
 
 .filtros-seleccionados{
@@ -116,14 +125,14 @@ a{
 }
 
 .intro{
-    width: 320px;
+    width: 340px;
     float: left;
-    padding-top: 25px;
+    padding-top: 20px;
     height: 261px;
     font-size: 12px;
 }
 .intro .title{
-    font-size: 20px;
+    font-size: 18px;
     font-weight: bold;
     color: #333333;
     padding-left: 5px;
@@ -133,12 +142,13 @@ a{
     text-align: justify;
     padding-left: 5px;
     font-size: 12px;
+    margin-top: 5px;
 }
 .salidas{
     float: left;
     width: 600px;
     margin-top: 15px;
-    padding-left: 40px;
+    padding-left: 20px;
 }
 .salidas a{
     display: inline-block;
@@ -312,7 +322,7 @@ label #id_year{
 #tabla-form table{
     margin-left:15px;
     font-size:12px;
- table-layout:fixed;
+ 	table-layout:fixed;
 }
 
 .introform{
@@ -346,15 +356,16 @@ small{
     font-weigth:bold;
     font-family:Arial;
 }
-#consultar{
+.consultar{
     background:url(/files/img/consultar.png);
     width:165px;
     height:34px;
     border:0;
     margin-left:15px;
 }
-
-
+.avanzada{
+	background:url(/files/img/consultaavanzada.png);
+}
 #menufiltros{
     background:#eef7f7;
     width:100%;
@@ -389,7 +400,12 @@ small{
 #mujeres-link{
     background:url(/files/img/mujeres.jpg) no-repeat;
 }
-
+#proposito-link{
+	background: url(/files/img/propositobarra.png);
+}
+#fin-link{
+	background: url(/files/img/finbarra.png);
+}
 #organizaciones-link{
     background:url(/files/img/organizacion.jpg) no-repeat;
 }
@@ -636,7 +652,39 @@ small{
     background:url(/files/img/arrow.png) no-repeat;
     background-position: center left;
 }
-
 .tooltip a:hover{
     color:#63e8e8;
 }
+.tabla-cruces table{
+	font-size: 12px;
+}
+.tabla-cruces caption{
+	font-size: 14px;
+	color: #000;
+	background: #EEF7F7;
+	border: 1px solid #CAE4F2;		
+}
+.tabla-cruces label{
+	padding-left: 20px;
+}
+.tabla-cruces ul{
+	list-style: none;
+	margin-left: -20px;
+}
+.view_grafo{
+	background: url(/files/img/view_graph.png) no-repeat right;
+	padding-right: 20px;
+	font-size: 11px; text-decoration: none;
+	color: #069;
+}
+.view_grafo:hover{
+	text-decoration: underline;
+}
+.logo-org{
+	float: left;
+	width: 160px;
+	height: 100px;
+	margin-right: 10px;
+    margin-left: 10px;
+}
+

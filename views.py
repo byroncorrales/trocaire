@@ -7,6 +7,7 @@ from django.template import RequestContext
 
 def index(request):
     request.session['centinela'] = 0
+    contrapartes = Contraparte.objects.all()
     return render_to_response("index.html", RequestContext(request, locals()))
 
 def get_depas(request):
@@ -94,3 +95,4 @@ def get_orgs(request):
     orgs = Contraparte.objects.filter(departamento__pk__in=map(lambda x: int(x), ids.split(','))).values('id', 'nombre_corto')
 
     return HttpResponse(simplejson.dumps(list(orgs)), mimetype='application/json')
+

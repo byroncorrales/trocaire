@@ -1,12 +1,9 @@
 # -*- coding: UTF-8 -*-
 from django.contrib.contenttypes.models import ContentType
-from trocaire.encuesta.models import Funcionario
-from trocaire.encuesta.models import Hombre
-from trocaire.encuesta.models import Lider
-from trocaire.encuesta.models import Mujer
+from trocaire.encuesta.models import *
 from trocaire.lugar.models import Departamento
 from trocaire.lugar.models import Municipio
-
+from trocaire.encuesta.models import *
 
 #funcion destinada a devolver las encuestas en rangos de edad
 def _query_set_filtrado(request, tipo='mujer'):
@@ -54,10 +51,18 @@ def _query_set_filtrado(request, tipo='mujer'):
         dicc[1] = Funcionario.objects.filter(sexo='femenino', ** params)
         dicc[2] = Funcionario.objects.filter(sexo='masculino', ** params)
         return dicc
+    
     elif tipo == 'lider':
         dicc[1] = Lider.objects.filter(sexo='femenino', ** params)
         dicc[2] = Lider.objects.filter(sexo='masculino', ** params)
         return dicc
+    
+    #consultas realizadas para cruces de variables
+    elif tipo == 'solomujeres':
+        return Mujer.objects.filter(** params)
+    
+    elif tipo == 'solohombres':
+        return Hombre.objects.filter(** params)
 
 #funcion lambda que calcula los totales a partir de la consulta filtrada
 get_total = lambda x: [v.count() for k, v in x.items()]

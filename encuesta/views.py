@@ -4,12 +4,65 @@ from django.core.urlresolvers import ViewDoesNotExist
 from django.db.models import Sum
 from django.shortcuts import render_to_response
 from django.template import RequestContext
+from django.http import HttpResponseRedirect
 from forms import ConsultarForm
 from models import *
 from trocaire.lugar.models import *
 from trocaire.utils import _query_set_filtrado, get_total, get_prom
 
-def consultar(request):
+def generales(request):
+    '''Vista para generar tablas de datos generales'''
+    total_mujeres = Mujer.objects.all().count() + Lider.objects.filter(sexo='femenino').count() + Funcionario.objects.filter(sexo='femenino').count() 
+    total_hombres = Hombre.objects.all().count() + Lider.objects.filter(sexo='masculino').count() + Funcionario.objects.filter(sexo='masculino').count()    
+    total =  total_mujeres + total_hombres
+    
+    tabla_hombre_mujer = {1: {'nombre': 'Mujeres', 'frecuencia': total_mujeres, 'porcentaje': get_prom(total_mujeres, total)},
+                          2: {'nombre': 'Hombres', 'frecuencia': total_hombres, 'porcentaje': get_prom(total_hombres, total)}}
+    
+    tabla_municipio = {}
+    dicc = {}        
+    for municipio in Municipio.objects.all().order_by('nombre'):
+        frecuencia = Mujer.objects.filter(municipio=municipio).count() + Hombre.objects.filter(municipio=municipio).count() + \
+                     Lider.objects.filter(municipio=municipio).count() + Funcionario.objects.filter(municipio=municipio).count()
+        
+        if frecuencia != 0:            
+            dicc[municipio] = frecuencia
+    
+    #ordenar el dicc    
+    dicc2 = sorted(dicc.items(), key=lambda x: x[1], reverse=True)
+    counter_municipio = 1       
+    #generar la tabla con los datos a partir del dicc ordenado
+    for value in dicc2:
+        tabla_municipio[counter_municipio] = {'nombre': '%s - %s' % (value[0].departamento.nombre, value[0].nombre), 'frecuencia': value[1], 'porcentaje': get_prom(value[1], total)}
+        counter_municipio += 1
+    
+    #datos para estado civil
+    counter_civil = 1
+    tabla_civil = {}
+    for op in ESTADO_CIVIL:
+        frecuencia = Mujer.objects.filter(estado_civil=op[0]).count() + Hombre.objects.filter(estado_civil=op[0]).count() + \
+                     Lider.objects.filter(estado_civil=op[0]).count() + Funcionario.objects.filter(estado_civil=op[0]).count()
+        counter_civil += 1
+        tabla_civil[counter_civil] = {'nombre': op[1], 'frecuencia': frecuencia, 'porcentaje': get_prom(frecuencia, total)}
+        
+    #datos para asistencia a iglesia
+    counter_iglesia = 1
+    tabla_iglesia = {}
+    iglesia = {True: 'Si asiste', False: 'No asiste'}
+    for op in [True, False]:
+        frecuencia = Mujer.objects.filter(asiste_iglesia=op).count() + Hombre.objects.filter(asiste_iglesia=op).count() + \
+                     Lider.objects.filter(asiste_iglesia=op).count() + Funcionario.objects.filter(asiste_iglesia=op).count()
+        counter_iglesia += 1
+        tabla_iglesia[counter_iglesia] = {'nombre': iglesia[op], 'frecuencia': frecuencia, 'porcentaje': get_prom(frecuencia, total)}        
+                     
+    return render_to_response("generales.html", RequestContext(request, locals()))
+
+def consultar(request, pf=False):    
+    if pf:
+        request.session['pf'] = True
+    else:
+        request.session['pf'] = False
+            
     if request.method == 'POST':
         form = ConsultarForm(request.POST)
         if form.is_valid():
@@ -19,10 +72,13 @@ def consultar(request):
             request.session['organizacion'] = form.cleaned_data['organizacion']
             request.session['municipio'] = form.cleaned_data['municipio']
             request.session['centinela'] = 1
-            centinela = 1
+            
+            if '_avanzada' in request.POST:
+                return HttpResponseRedirect('/monitoreopf/cruces/')
+            
     else:
         form = ConsultarForm()
-        centinela = 0
+        request.session['centinela'] = 0
 
     return render_to_response("monitoreo/consultar.html", RequestContext(request, locals()))
 
@@ -171,15 +227,9 @@ def ruta_critica(request):
             tabla[field.verbose_name][key] = {}
 
             for op in opciones:
-                tabla[field.verbose_name][key][op] = RutaCritica.objects.filter(content_type=cfunc, object_id__in=lista, ** {field.name: op-1}).count()
+                tabla[field.verbose_name][key][op] = RutaCritica.objects.filter(content_type=cfunc, object_id__in=lista, ** {field.name: op - 1}).count()
 
-    totales = get_total(resultados)
-    #tomar todos los valores de la tabla y calcular promedio
-#    for key, value in tabla.items():
-#        for i in range(1, 3):
-#            total = sum(tabla[key][i].values())
-#            for nivel in opciones:
-#                tabla[key][i][nivel] = [tabla[key][i][nivel], get_prom(tabla[key][i][nivel], total)]
+    totales = get_total(resultados) 
 
     totales_vertical = []
     grafico = {}
@@ -231,7 +281,7 @@ def mencione_instrumentos(request):
     tabla = get_prom_lista_func(tabla, totales)
 
     return render_to_response("monitoreo/funcionarios/generica_funcionario.html",
-                              {'tabla': tabla, 'titulo': titulo, 'totales': totales,},
+                              {'tabla': tabla, 'titulo': titulo, 'totales': totales, },
                               RequestContext(request))
 
 def registro_datos(request):
@@ -250,7 +300,7 @@ def registro_datos(request):
             cantidad = RegistroDato.objects.filter(content_type=cfunc, object_id__in=lista, lleva_registro=opcion).count()
             tabla[key][opcion] = [cantidad, get_prom(cantidad, grupo.count())]
 
-    return render_to_response("monitoreo/funcionarios/generica_pie_func.html", 
+    return render_to_response("monitoreo/funcionarios/generica_pie_func.html",
                               {'tabla': tabla, 'titulo': titulo, 'totales': totales},
                               RequestContext(request))
 
@@ -302,7 +352,7 @@ def calidad_servicios(request):
         for opcion in SERVICIOS:
             tabla[opcion[1]][key] = CalidadAtencionFuncionario.objects.filter(content_type=cfunc, object_id__in=lista, valor_servicio=opcion[0]).count()
 
-    return render_to_response("monitoreo/funcionarios/casos_por_tipo.html",
+    return render_to_response("monitoreo/funcionarios/casos_por_tipo2.html",
                               {'tabla': tabla, 'titulo': titulo, 'totales': totales},
                               RequestContext(request))
 
@@ -322,7 +372,7 @@ def mejorar_atencion(request):
         for opcion in SI_NO_SIMPLE2:
             tabla[opcion[1]][key] = AccionMejorarAtencion.objects.filter(content_type=cfunc, object_id__in=lista, realizo_accion=opcion[0]).count()
 
-    return render_to_response("monitoreo/funcionarios/casos_por_tipo.html",
+    return render_to_response("monitoreo/funcionarios/casos_por_tipo2.html",
                               {'tabla': tabla, 'titulo': titulo, 'totales': totales},
                               RequestContext(request))
 
@@ -363,7 +413,7 @@ def prevenir_vbg(request):
         [lista.append(encuesta.id) for encuesta in grupo]
         for opcion in SI_NO_SIMPLE2:
             tabla[opcion[1]][key] = AccionPrevVBG.objects.filter(content_type=cfunc, object_id__in=lista, realizo_accion=opcion[0]).count()
-    return render_to_response("monitoreo/funcionarios/casos_por_tipo.html",
+    return render_to_response("monitoreo/funcionarios/casos_por_tipo2.html",
                               {'tabla': tabla, 'titulo': titulo, 'totales': totales},
                               RequestContext(request))
 
@@ -406,7 +456,7 @@ def donde_buscar_ayuda(request):
             tabla[op].append(AccionVBGFuncionario.objects.filter(content_type=cfunc, object_id__in=lista, donde_buscar=op).count())
 
     for key, value in tabla.items():
-        if verificar(value) < 5:
+        if verificar(value) < 10:
             del tabla[key]
 
     totales = get_total(resultados)
@@ -461,6 +511,28 @@ def existe_ley_penaliza(request):
     return render_to_response("monitoreo/funcionarios/generica_pie_func2.html",
                               {'tabla': tabla, 'titulo': titulo, 'totales': totales},
                               RequestContext(request))
+    
+def recursos_institucion(request):
+    titulo = u'¿Con que recursos cuenta su institución para realizar la atención que brinda a las mujeres que viven VBG?'
+    resultados = _query_set_filtrado(request, 'funcionario')
+    tabla = {}    
+    opciones = RecursoCuentaIns.objects.all()
+
+    for op in opciones:
+        tabla[op] = []
+
+    for key, grupo in resultados.items():
+        lista = []
+        [lista.append(encuesta.id) for encuesta in grupo]
+
+        for op in opciones:
+            tabla[op].append(AccionMejorarAtencion.objects.filter(content_type=cfunc, object_id__in=lista, recursos=op).count())
+
+    totales = get_total(resultados)
+    tabla = get_prom_lista_func(tabla, totales)
+    return render_to_response("monitoreo/funcionarios/generica_funcionario.html",
+                              {'tabla': tabla, 'titulo': titulo, 'totales': totales, 'nografo': True},
+                              RequestContext(request))
 
 #obtener la vista adecuada para los indicadores
 def _get_view_funcionario(request, vista):
@@ -490,6 +562,7 @@ VALID_VIEWS_FUNCIONARIO = {
     'mencione-instrumentos': mencione_instrumentos,
     'donde-buscar-ayuda': donde_buscar_ayuda,
     'que-debe-hacer': que_debe_hacer_funcionario,
+    'recursos-institucion': recursos_institucion,
 }
 
 def get_prom_lista_con_total(tabla, total):
@@ -526,27 +599,27 @@ def get_prom_lista_func(tabla, total):
 def get_prom_dead_list(tabla, totales):
     for k, v in tabla.items():
         for key, value in v.items():                        
-            tabla[k][key] = [[value[0], get_prom(value[0], totales[key-1])],
-            [value[1], get_prom(value[1], totales[key-1])],
-            [value[2], get_prom(value[2], totales[key-1])],
-            [value[3], get_prom(value[3], totales[key-1])]]
+            tabla[k][key] = [[value[0], get_prom(value[0], totales[key - 1])],
+            [value[1], get_prom(value[1], totales[key - 1])],
+            [value[2], get_prom(value[2], totales[key - 1])],
+            [value[3], get_prom(value[3], totales[key - 1])]]
     return tabla
 
 def get_prom_dead_list2(tabla, totales):
     for k, v in tabla.items():
         for key, value in v.items():
-            tabla[k][key] = [[value[0], get_prom(value[0], totales[key-1])],
-            [value[1], get_prom(value[1], totales[key-1])],
-            [value[2], get_prom(value[2], totales[key-1])],
-            [value[3], get_prom(value[3], totales[key-1])],
-            [value[4], get_prom(value[4], totales[key-1])]]
+            tabla[k][key] = [[value[0], get_prom(value[0], totales[key - 1])],
+            [value[1], get_prom(value[1], totales[key - 1])],
+            [value[2], get_prom(value[2], totales[key - 1])],
+            [value[3], get_prom(value[3], totales[key - 1])],
+            [value[4], get_prom(value[4], totales[key - 1])]]
     return tabla
 
 def get_prom_dead_list3(tabla, totales):
     for k, v in tabla.items():
         for key, value in v.items():
-            tabla[k][key] = [[value[0], get_prom(value[0], totales[key-1])],
-            [value[1], get_prom(value[1], totales[key-1])]]
+            tabla[k][key] = [[value[0], get_prom(value[0], totales[key - 1])],
+            [value[1], get_prom(value[1], totales[key - 1])]]
     return tabla
 
 def convertir_grafico(tabla):
@@ -562,7 +635,7 @@ def convertir_grafico(tabla):
     for i in range(1, len(tabla.items()[0][1].keys()) + 1):
         for j in range(1, len(tabla.items()[0][1][1]) + 1):
             for key, value in tabla.items():
-                dicc[i][j].append(value[i][j-1])
+                dicc[i][j].append(value[i][j - 1])
     return dicc
 
 #------------------------LIDERES Y LIDEREZAS------------------------------------
@@ -772,7 +845,7 @@ def donde_buscar_ayuda_lideres(request):
             tabla[op].append(AccionVBGLider.objects.filter(content_type=clider, object_id__in=lista, donde_buscar=op).count())
 
     for key, value in tabla.items():
-        if verificar(value) < 5:
+        if verificar(value) < 10:
             del tabla[key]
 
     totales = get_total(resultados)
@@ -1044,7 +1117,7 @@ def cuales_acciones_lideres(request):
     tabla = get_prom_lista_func(tabla, totales)
 
     return render_to_response("monitoreo/lideres/generica_lideres.html",
-                              {'tabla': tabla, 'titulo': titulo, 'totales': totales, 'nografo': True},
+                              {'tabla': tabla, 'titulo': titulo, 'totales': totales, },
                               RequestContext(request))
 
 def mujeres_lideres(request):
@@ -1228,7 +1301,7 @@ def que_hace_ante_vbg(request):
             tabla[field.verbose_name][key] = {}            
             
             for op in opciones:
-                tabla[field.verbose_name][key][op] = AccionVBGLider.objects.filter(content_type=clider, object_id__in=lista, ** {field.name: op-1}).count()
+                tabla[field.verbose_name][key][op] = AccionVBGLider.objects.filter(content_type=clider, object_id__in=lista, ** {field.name: op - 1}).count()
     totales = get_total(resultados)
     
     #---------------Inicia transformacion para grafico ------------------------
@@ -1247,8 +1320,8 @@ def _get_vista_lideres(request, vista):
         raise ViewDoesNotExist("Tried %s in module %s Error: View not define in VALID_VIEWS." % (vista, 'encuesta.views'))
 
 VALID_VIEWS_LIDERES = {
-    'le-hablan-de': lideres_le_hablan_de, 
-    'hombres-violentos': lideres_hombres_violentos, 
+    'le-hablan-de': lideres_le_hablan_de,
+    'hombres-violentos': lideres_hombres_violentos,
     'comportamiento': comportamiento_lideres,
     'justificacion': hombres_violencia_mujeres_lideres,
     'ayuda-mujer': ayuda_mujer_violencia_lideres,
@@ -1261,7 +1334,7 @@ VALID_VIEWS_LIDERES = {
     'tipo-vbg-ha-vivido': tipo_vbg_ha_vivido,
     'frecuencia-vbg': frecuencia_vbg,
     'quien-ejercio-vbg': quien_ejercio_vbg,
-    'conocimiento-leyes': conocimiento_leyes,
+    'prohibido-por-ley': conocimiento_leyes,
     'existe-ley-penaliza-vbg': existe_ley_penaliza_vbg,
     'decisiones': decisiones,
     'corresponsabilidad': corresponsabilidad,
